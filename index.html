@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Text-to-Video Platform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-indigo-600 to-purple-700 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-3xl">
+    <h1 class="text-3xl font-bold text-center mb-2">🎬 AI Text to Video</h1>
+    <p class="text-center text-gray-600 mb-6">Final-Year Project Demo</p>
+
+    <!-- LOGIN -->
+    <div id="loginBox" class="mb-6">
+      <h2 class="text-lg font-semibold mb-2">Login</h2>
+      <input id="username" placeholder="Username" class="w-full p-2 border rounded mb-2">
+      <input id="password" type="password" placeholder="Password" class="w-full p-2 border rounded mb-3">
+      <button onclick="login()" class="w-full bg-indigo-600 text-white p-2 rounded">Login</button>
+    </div>
+
+    <!-- VIDEO GENERATION -->
+    <div id="appBox" class="hidden">
+      <p class="text-sm text-green-600 mb-2">Logged in successfully</p>
+
+      <textarea id="prompt" rows="4" class="w-full p-3 border rounded mb-3"
+        placeholder="Describe your video..."></textarea>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <select id="style" class="border p-2 rounded">
+          <option value="cinematic">Cinematic</option>
+          <option value="anime">Anime</option>
+          <option value="realistic">Realistic</option>
+        </select>
+
+        <select id="voice" class="border p-2 rounded">
+          <option value="none">No Voice</option>
+          <option value="male">Male Voice</option>
+          <option value="female">Female Voice</option>
+        </select>
+
+        <select id="subtitles" class="border p-2 rounded">
+          <option value="true">Subtitles</option>
+          <option value="false">No Subtitles</option>
+        </select>
+      </div>
+
+      <button onclick="generateVideo()" class="w-full bg-purple-600 text-white p-3 rounded">
+        Generate Video
+      </button>
+
+      <p id="status" class="text-center mt-4 text-gray-600"></p>
+
+      <div id="result" class="hidden mt-4">
+        <video id="video" controls class="w-full rounded"></video>
+        <a id="download" class="block text-center mt-2 text-indigo-600 font-semibold" download>
+          ⬇ Download Video
+        </a>
+      </div>
+    </div>
+  </div>
+
+<script>
+let token = "";
+const loginBox = document.getElementById("loginBox");
+const appBox = document.getElementById("appBox");
+const status = document.getElementById("status");
+const result = document.getElementById("result");
+const video = document.getElementById("video");
+const download = document.getElementById("download");
+
+async function login() {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+
+  const res = await fetch("http://127.0.0.1:8000/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+
+  const data = await res.json();
+  if (data.access_token) {
+    token = data.access_token;
+    loginBox.classList.add("hidden");
+    appBox.classList.remove("hidden");
+    status.innerText = "✅ Logged in";
+  } else {
+    alert("Login failed");
+  }
+}
+
+async function generateVideo() {
+  status.innerText = "⏳ Generating video...";
+  result.classList.add("hidden");
+
+  // Fetch values and ensure subtitles is boolean
+  const payload = {
+    prompt: document.getElementById("prompt").value,
+    style: document.getElementById("style").value,
+    voice: document.getElementById("voice").value,
+    subtitles: document.getElementById("subtitles").value === "true"
+  };
+
+  console.log("Payload sent to server:", payload);
+
+  const res = await fetch("http://127.0.0.1:8000/generate-video", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + token,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await res.json();
+
+  if (data.video_url) {
+    video.src = data.video_url;         // set video source
+    download.href = data.video_url;     // set download link
+    download.download = "generated_video.mp4"; // set download filename
+    result.classList.remove("hidden");  // show video player
+    status.innerText = `✅ Done | Credits left: ${data.remaining_credits}`;
+  } else {
+    status.innerText = "❌ Error generating video";
+    console.error("Server error:", data);
+  }
+}
+</script>
+
+
+</body>
+</html>
